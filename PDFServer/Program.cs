@@ -1,59 +1,85 @@
-﻿using System;
+﻿// A C# Program for Server
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-class TcpClientExample
+namespace Server
 {
-    static void Main(string[] args)
+    class Program
     {
-        // Define the server address and port
-        string serverIp = "127.0.0.1"; // Change this to the server's IP address
-        int port = 8080; // Change this to the server's port
-
-        // Array of characters to choose from
-        char[] categories = { 'a', 'b', 'c' };
-        Random random = new Random();
-
-        try
+        // Main Method
+        static void Main(string[] args)
         {
-            // Create a TCP client
-            using (TcpClient client = new TcpClient())
-            {
-                // Connect to the server
-                client.Connect(IPAddress.Parse(serverIp), port);
-                Console.WriteLine("Connected to the server.");
-
-                // Get the network stream
-                NetworkStream stream = client.GetStream();
-
-                // Send a message to the server
-                string message = "Hello, Server!";
-                byte[] data = Encoding.ASCII.GetBytes(message);
-                stream.Write(data, 0, data.Length);
-                Console.WriteLine("Sent: {0}", message);
-
-                // Receive a response from the server
-                byte[] buffer = new byte[256];
-                int bytesRead = stream.Read(buffer, 0, buffer.Length);
-                string response = Encoding.ASCII.GetString(buffer, 0, bytesRead);
-                Console.WriteLine("Received: {0}", response);
-
-                // Randomly select a category
-                char randomCategory = categories[random.Next(categories.Length)];
-
-                // Create the new message
-                string newMessage = response + "added category" +randomCategory;
-
-                // Send the new message back to the server
-                byte[] newData = Encoding.ASCII.GetBytes(newMessage);
-                stream.Write(newData, 0, newData.Length);
-                Console.WriteLine("Sent back: {0}", newMessage);
-            }
+            ExecuteServer();
         }
-        catch (Exception ex)
+
+        public static void ExecuteServer()
         {
-            Console.WriteLine("Error: {0}", ex.Message);
+            // Establish the local endpoint 
+            IPHostEntry ipHost = Dns.GetHostEntry(Dns.GetHostName());
+            IPAddress ipAddr = ipHost.AddressList[0];
+            IPEndPoint localEndPoint = new IPEndPoint(ipAddr, 11111);
+
+            // Creation TCP/IP Socket using 
+            // Socket Class Constructor
+            Socket listener = new Socket(ipAddr.AddressFamily,
+                        SocketType.Stream, ProtocolType.Tcp);
+
+            // Array of categories to choose from
+            char[] categories = { 'a', 'b', 'c' };
+            Random random = new Random();
+
+            try
+            {
+                // Bind the socket
+                listener.Bind(localEndPoint);
+
+                // Listen for incoming connections
+                listener.Listen(10);
+
+                while (true)
+                {
+                    Console.WriteLine("Waiting for connection ... ");
+
+                    // Accept incoming connection
+                    Socket clientSocket = listener.Accept();
+
+                    // Data buffer
+                    byte[] bytes = new Byte[1024];
+                    string data = null;
+
+                    while (true)
+                    {
+                        int numByte = clientSocket.Receive(bytes);
+                        data += Encoding.ASCII.GetString(bytes, 0, numByte);
+
+                        // Check for end of message
+                        if (data.IndexOf("<EOF>") > -1)
+                            break;
+                    }
+
+                    Console.WriteLine("Text received -> {0} ", data);
+
+                    // Randomly select a category
+                    char randomCategory = categories[random.Next(categories.Length)];
+
+                    // Create the new message
+                    string newMessage = data.TrimEnd("<EOF>".ToCharArray()) + randomCategory;
+
+                    // Send the modified message back to the client
+                    byte[] message = Encoding.ASCII.GetBytes(newMessage);
+                    clientSocket.Send(message);
+
+                    // Close client Socket
+                    clientSocket.Shutdown(SocketShutdown.Both);
+                    clientSocket.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
     }
 }
