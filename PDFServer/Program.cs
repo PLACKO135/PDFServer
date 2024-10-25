@@ -40,6 +40,7 @@ namespace Server
 
                 while (true)
                 {
+                    Console.WriteLine("Server Started");
                     Console.WriteLine("Waiting for connection ... ");
 
                     // Accept incoming connection
@@ -59,13 +60,15 @@ namespace Server
                             break;
                     }
 
+                    Console.WriteLine("Connected to client");
                     Console.WriteLine("Text received -> {0} ", data);
 
                     // Randomly select a category
                     char randomCategory = categories[random.Next(categories.Length)];
 
                     // Create the new message
-                    string newMessage = data.TrimEnd("<EOF>".ToCharArray()) + randomCategory;
+                    // Here we append the random category to the received data
+                    string newMessage = data.TrimEnd("<EOF>".ToCharArray()) + "\n" + randomCategory;
 
                     // Send the modified message back to the client
                     byte[] message = Encoding.ASCII.GetBytes(newMessage);
